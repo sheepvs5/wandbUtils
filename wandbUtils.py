@@ -10,33 +10,37 @@ def cleanup_artifacts(project):
                 if not artifact.aliases:
                     artifact.delete()
                     
-def get_files_by_name(run, name='script.py'):
+def get_files_in_run(run, file_name='script.py'):
     files = []
     for file in run.files():
-        if name in file.name:
+        if file_name in file.name:
             files.append(file)
     return files
 
-def remove_line_including_word(strings, word):
-    lines = strings.split('\n')
-    for line in lines:
-        if word in line:
-            lines.remove(line)
-    return '\n'.join(lines)
+def remove_line_including_word(lines, word):
+    line_list = lines.split('\n')
+    new_line_list = []        
+    for line in line_list:
+        if not word in line:
+            new_line_list.append(line)
+    return '\n'.join(new_line_list)
 
-def remove_lines_including_word(strings, words):
+def remove_line_including_words(lines, words):
     for word in words:
-        strings = remove_line_including_word(strings, word)
-    return strings
+        lines = remove_line_including_word(lines, word)
+    return lines
 
-def load_code_from_run(run_name, remove_keywords=['Repo.clone_from', 'artifact', 'trainer.fit']):
-    api = wandb.Api()
-    run = api.run(run_name)
-    script_file = get_files_by_name(run)[0]
+def load_code_from_run(run, remove_keywords=['Repo.clone_from', 'artifact', 'trainer.fit']):
+    if isinstance(run, str):
+        # api = wandb.Api()
+        # run = api.run(run)
+        run = get_run_by_name(run)
+        
+    script_file = get_files_in_run(run)[0]
     file = script_file.download('tmp', replace=True)
     with file as f:
         lines = f.read()
-    new_lines = remove_lines_including_word(lines, remove_keywords)
+    new_lines = remove_line_including_words(lines, remove_keywords)
     return new_lines
 
 def get_last_artifact(artifacts):
@@ -49,11 +53,12 @@ def get_last_artifact(artifacts):
             last_idx = idx
     return list(artifacts)[last_idx]
 
-def get_run_by_name(project, name):
+def get_run_by_name(name):
+    project = name.split('/')[-2]
     runs = wandb.Api().runs(project)
     matched_runs = []
     for run in runs:
-        if run.name==name:
+        if run.name==name.split('/')[-1]:
             matched_runs.append(run)
     return matched_runs[0]
 
@@ -61,21 +66,21 @@ def get_ckpt_from_artifact(artifact):
     artifact_dir = artifact.download()
     return os.path.join(artifact_dir, 'model.ckpt')
 
-def get_last_model_by_name(project, name):
-    run = get_run_by_name(project, name)
+def get_last_model_by_name(name):
+    run = get_run_by_name(name)
     artifacts = run.logged_artifacts()
     artifact = get_last_artifact(artifacts)
     return get_ckpt_from_artifact(artifact)
     
-def load_model_from_run(project, name, key=None):
+def load_model_by_name(name, key=None):
     ''' load state_dict of trained model using name or key.
     If key is not None, then find the model from the key.
     '''
     if key is not None:
         api = wandb.Api()
-        run = api.run(run_name)
+        run = api.run(key)
     else:
-        run = get_run_by_name(project, name)
+        run = get_run_by_name(name)
     artifacts = run.logged_artifacts()
     artifact = list(artifacts)[-1]
     artifact_dir = artifact.download()
