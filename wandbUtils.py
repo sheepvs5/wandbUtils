@@ -1,5 +1,17 @@
 import wandb, torch, os, re
 
+def get_all_runs(project, partial_name=None):
+    api = wandb.Api()
+    runs = api.runs(project)
+    if partial_name is None:
+        return runs
+    else:
+        matched_runs = []
+        for run in runs:
+            if partial_name in run.name:
+                matched_runs.append(run)
+        return matched_runs
+
 def cleanup_artifacts(project):
     api = wandb.Api()
     runs = api.runs(project)
@@ -30,13 +42,13 @@ def remove_line_including_words(lines, words):
         lines = remove_line_including_word(lines, word)
     return lines
 
-def load_code_from_run(run, remove_keywords=['Repo.clone_from', 'artifact', 'trainer.fit']):
+def load_code_from_run(run, remove_keywords=['Repo.clone_from', 'artifact', 'trainer.fit'], file_name='script.py'):
     if isinstance(run, str):
         # api = wandb.Api()
         # run = api.run(run)
         run = get_run_by_name(run)
         
-    script_file = get_files_in_run(run)[0]
+    script_file = get_files_in_run(run, file_name=file_name)[0]
     file = script_file.download('tmp', replace=True)
     with file as f:
         lines = f.read()
