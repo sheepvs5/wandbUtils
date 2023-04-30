@@ -96,4 +96,4 @@ def load_model_by_name(name, key=None):
     artifacts = run.logged_artifacts()
     artifact = list(artifacts)[-1]
     artifact_dir = artifact.download()
-    return torch.load(os.path.join(artifact_dir, 'model.ckpt'))['state_dict']
+    return torch.load(os.path.join(artifact_dir, 'model.ckpt'), map_location='cpu')['state_dict']
